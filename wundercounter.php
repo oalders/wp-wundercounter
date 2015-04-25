@@ -19,8 +19,8 @@ if(!class_exists('WunderPluginBase')):
 /*
 
 Adapted from Alex Tingles MultiWidget Class
- 
- 
+
+
 Original Notice:
 
 Copyright (c) 2008 Alex Tingle.
@@ -43,29 +43,29 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 class WunderPluginBase {
-    
+
     var $plugin_url = '';
     var $plugin_dir = '';
-    
+
     // if your subclass has a method "register_hooks" it'll be auto-run
     // on instantiation.  We'll amend this in the PluginWidget class to also
     // automatically register the widget
     protected $run_on_construct = array('register_hooks');
-    
+
     /**
      * Constructor
      *
      * @param   string      $plugin_path    The pathname to the plugin (just pass __FILE__ to the constructor)
      */
     function __construct($plugin_file = '') {
-        
+
         if(!strlen($plugin_file))
             die(__CLASS__ . ' requires a plugin file; just pass __FILE__');
-        
+
         $this->plugin_url = WP_PLUGIN_URL.'/'.str_replace(basename( $plugin_file ),"",plugin_basename( $plugin_file )); ;
         $this->plugin_dir = WP_PLUGIN_DIR . '/' . str_replace(basename( $plugin_file ),"",plugin_basename( $plugin_file ));
         $this->plugin_dir = preg_replace('/\\\\/','/',$this->plugin_dir); # os-compat
-        
+
         // if you defined a register_hooks method in a subclass we'll run it
         // on instantiation
         foreach ( $this->run_on_construct as $method ) {
@@ -73,9 +73,9 @@ class WunderPluginBase {
                 call_user_func(array($this, $method)); // equivalent to $this->$method()
             }
         }
-        
+
     }
-    
+
     /**
      * Returns the URL to the root of the plugin
      *
@@ -86,18 +86,18 @@ class WunderPluginBase {
     function plugin_url($path = '', $relative = FALSE) {
         if(!isset($path))
             $path = '';
-        else            
+        else
             $path = preg_replace('/^\/+/','',$path);
-            
+
         $url = $this->plugin_url . $path;
 
         // convert to a pseudo-relative path (maeaning I've pulled off the http and domain)
         if($relative)
             $url = preg_replace('/^[a-z]+:\/\/[^\/]+\//','/',$url);
-            
+
         return $url;
     }
-    
+
     // get a file path
     function plugin_dir($path = '') {
         if(!isset($path))
@@ -110,7 +110,7 @@ class WunderPluginBase {
         $path = preg_replace(array('/\\/','/^\/+/'),array('/',''),$pathname);
         return $this->plugin_dir . $path;
     }
- 
+
     /* generate a <link> tag for css
      * often used when putting a hook into wp_head filter (for adding css to blog pages)
      * or admin_head (for adding css to admin pages)
@@ -118,7 +118,7 @@ class WunderPluginBase {
     function css_link_tag($css = '') {
         if(!isset($css) || $css == '')
             return '';
-        
+
         return sprintf("<link type='text/css' rel='stylesheet' href='%s' />\n", $css);
     }
 
@@ -127,16 +127,16 @@ class WunderPluginBase {
     function is_assoc(&$array) {
         return (is_array($array) && 0 !== count(array_diff_key($array, array_keys(array_keys($array)))));
     }
-    
-    
+
+
     // generate an <option> list with an array and a selected value
     function make_option_list($items = array(), $selected = '') {
         if(!is_array($items) || !count($items) || !is_string($selected))
             return '';
-        
+
         $html = '';
         $is_hash = $this->is_assoc($items);
-        
+
         foreach ( $items as $key => $value ) {
             // if items is indexed, the value and the label are the same
             $val    = $is_hash ? $key : $value;
@@ -148,9 +148,9 @@ class WunderPluginBase {
                 wp_specialchars($label)
             );
         }
-        return $html;        
+        return $html;
     }
-    
+
     function _dumper( $struct ) {
         return '<pre>' . wp_specialchars(print_r($struct,TRUE)) . '</pre>';
     }
@@ -171,12 +171,12 @@ class WunderPluginWidget extends WunderPluginBase
 {
     //
     // Interesting member variables.
-    
+
     var $id_base;         ///< Root id for all widgets of this type.
     var $name;            ///< Name for this widget type.
     var $widget_options;  ///< Option array passed to wp_register_sidebar_widget()
     var $control_options; ///< Option array passed to wp_register_widget_control()
-    
+
     var $number = false; ///< Unique ID number of the current instance.
     var $id     = false; ///< Unique ID string of the current instance (id_base-number)
 
@@ -192,7 +192,7 @@ class WunderPluginWidget extends WunderPluginBase
 
     //
     // Member functions that you must over-ride.
-    
+
     /** Echo the actual widget content. Subclasses should over-ride this function
      *  to generate their widget code. */
     function widget($args,$instance)
@@ -219,7 +219,7 @@ class WunderPluginWidget extends WunderPluginBase
 
     //
     // Functions you'll need to call.
-    
+
     /** CONSTRUCTOR
     *   widget_options: passed to wp_register_sidebar_widget()
     *   - description
@@ -240,47 +240,47 @@ class WunderPluginWidget extends WunderPluginBase
         $this->option_name      = 'multiwidget_'.$id_base; // becomes the stored key in the options database for this widget
         $this->widget_options   = wp_parse_args( $widget_options, array('classname'=>$this->option_name) );
         $this->control_options  = wp_parse_args( $control_options, array('id_base'=>$this->id_base) );
-        
+
         // Set true when we update the data after a POST submit - makes sure we
         // don't do it twice.
         $this->updated = false;
-        
+
         parent::__construct($plugin_pathname);
         //$this->WunderPluginBase($plugin_pathname);
-    
+
     }
-    
+
     /**
      * Run on object instanciation and registers the widget
      */
     function _widgets_init() {
         add_action( 'widgets_init', array($this,'_register') );
     }
-    
-    
+
+
     /** Helper function to be called by control_form().
     *  Returns an HTML name for the field. */
     function get_field_name($field_name)
     {
         return 'widget-'.$this->id_base.'['.$this->number.']['.$field_name.']';
     }
-    
-    
+
+
     /** Helper function to be called by control_form().
     *  Returns an HTML id for the field. */
     function get_field_id($field_name)
     {
         return 'widget-'.$this->id_base.'-'.$this->number.'-'.$field_name;
     }
-    
-    
+
+
     /** Registers this widget-type.
     *  Must be called during the 'widget_init' action. */
     function _register()
     {
         if( !$all_instances = get_option($this->option_name) )
             $all_instances = array();
-        
+
         $registered = false;
         foreach( array_keys($all_instances) as $number )
         {
@@ -291,7 +291,7 @@ class WunderPluginWidget extends WunderPluginBase
             $registered = true;
             $this->_register_one($number);
         }
-        
+
         // If there are none, we register the widget's existance with a
         // generic template
         if( !$registered )
@@ -300,30 +300,30 @@ class WunderPluginWidget extends WunderPluginBase
             $this->_register_one();
         }
     }
-    
-    
+
+
     //
     // PRIVATE FUNCTIONS. Don't worry about these.
-    
+
     function _set($number)
     {
         $this->number = $number;
         $this->id = $this->id_base.'-'.$number;
     }
-    
-    
+
+
     function _get_widget_callback()
     {
         return array(&$this,'widget_callback');
     }
-    
-    
+
+
     function _get_control_callback()
     {
         return array(&$this,'control_callback');
     }
-    
-    
+
+
     /** Generate the actual widget content.
     *  Just finds the instance and calls widget().
     *  Do NOT over-ride this function. */
@@ -333,43 +333,43 @@ class WunderPluginWidget extends WunderPluginBase
             $widget_args = array( 'number' => $widget_args );
         $widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
         $this->_set( $widget_args['number'] );
-        
+
         // Data is stored as array:
         //  array( number => data for that instance of the widget, ... )
         $all_instances = get_option($this->option_name);
         if( isset($all_instances[$this->number]) )
             $this->widget($args,$all_instances[$this->number]);
     }
-    
-    
+
+
     /** Deal with changed settings and generate the control form.
     *  Do NOT over-ride this function. */
     function control_callback($widget_args = 1)
     {
         global $wp_registered_widgets;
-        
+
         if( is_numeric($widget_args) )
             $widget_args = array( 'number' => $widget_args );
         $widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
-        
+
         // Data is stored as array:
         //  array( number => data for that instance of the widget, ... )
         $all_instances = get_option($this->option_name);
         if( !is_array($all_instances) )
             $all_instances = array();
-        
+
         // We need to update the data
         if( !$this->updated && !empty($_POST['sidebar']) )
         {
             // Tells us what sidebar to put the data in
             $sidebar = (string) $_POST['sidebar'];
-            
+
             $sidebars_widgets = wp_get_sidebars_widgets();
             if( isset($sidebars_widgets[$sidebar]) )
                 $this_sidebar =& $sidebars_widgets[$sidebar];
             else
                 $this_sidebar = array();
-            
+
             foreach( $this_sidebar as $_widget_id )
             {
                 // Remove all widgets of this type from the sidebar.  We'll add the
@@ -388,7 +388,7 @@ class WunderPluginWidget extends WunderPluginBase
                     }
                 }
             }
-    
+
             foreach( (array)$_POST['widget-'.$this->id_base] as $number=>$new_instance)
             {
                 $this->_set($number);
@@ -396,18 +396,18 @@ class WunderPluginWidget extends WunderPluginBase
                     $instance = $this->control_update($new_instance,$all_instances[$number]);
                 else
                     $instance = $this->control_update($new_instance,array());
-                
+
                 if( !empty($instance) )
                 {
                     $instance['__multiwidget'] = $number;
                     $all_instances[$number] = $instance;
                 }
             }
-    
+
             update_option($this->option_name, $all_instances);
             $this->updated = true; // So that we don't go through this more than once
         }
-    
+
         // Here we echo out the form
         if( -1 == $widget_args['number'] )
         {
@@ -423,8 +423,8 @@ class WunderPluginWidget extends WunderPluginBase
         }
         $this->control_form($instance);
     }
-    
-    
+
+
     /** Helper function: Registers a single instance. */
     function _register_one($number = -1)
     {
@@ -449,7 +449,7 @@ class WunderPluginWidget extends WunderPluginBase
 endif;
 
 class WunderCounter extends WunderPluginWidget {
-    
+
     // counter styles
     var $styles = array(
         'default'           => 'Default Style',
@@ -469,11 +469,11 @@ class WunderCounter extends WunderPluginWidget {
         'rosewd'            => 'Rosewood',
     );
 
-    // default counter back and text color options    
+    // default counter back and text color options
     var $background = array('transparent','black','white','red','gray' );
     var $text_colour = array('black','white','red','gray' );
 
-    // type options    
+    // type options
     var $types = array(
         'none'      => 'Do not track this type of page',
         'base'      => 'Use the BCN as defined above',
@@ -484,7 +484,7 @@ class WunderCounter extends WunderPluginWidget {
         'none'      => 'Do not track this type of page',
         'base'      => 'Use the BCN as defined above',
     );
-    
+
     // these are the types of pages we'll track
     // can't just add one here though, you'll need
     // to add code for the type in the build_counter
@@ -500,7 +500,7 @@ class WunderCounter extends WunderPluginWidget {
         'post'      => 'Single Post',
         'default'   => 'Other Pages',
     );
-    
+
     // constructor
     function __construct() {
         parent::__construct(
@@ -510,23 +510,23 @@ class WunderCounter extends WunderPluginWidget {
             array('description' => __('Incorporates WonderCounter into your Wordpress Site.'))
         );
     }
-    
+
     function register_hooks() {
-        
+
         //add_action('init',array(&$this,'init'));
-        
+
         // register the admine menu
         add_action( 'admin_menu',array($this,'register_admin_menu'));
 
         // run dashboard setup
         add_action('wp_dashboard_setup',array(&$this,'dashboard_setup'));
-        
+
         // add the action to add the counter after post bodies automatically
         add_action('template_redirect', array(&$this,'add_counter_to_content_hook'));
         //register_activation_hook( __FILE__, array(&$this,'activation_hook') );
 
     }
-    
+
     function register_admin_menu() {
         $page = add_submenu_page('plugins.php','WunderCounter','WunderCounter',10,__FILE__,array($this,'admin_page'));
         add_action("admin_print_scripts-{$page}", array(&$this,'admin_print_scripts'));
@@ -536,27 +536,27 @@ class WunderCounter extends WunderPluginWidget {
         wp_enqueue_script('jquery');
         wp_enqueue_script('wundercounter-admin',$this->plugin_url('js/admin.js'),array('jquery'));
     }
-        
+
     // only add the filter if it's invisible or visible-auto
     function add_counter_to_content_hook() {
         $options = $this->defaults(get_option($this->id_base));
-        
+
         if(in_array($options['type'],array('invisible','visible-auto')))
             add_filter('wp_footer',array(&$this,'add_counter_to_content'));
             // get_footer, wp_footer
     }
-    
+
     // append the counter
     function add_counter_to_content() {
         echo $this->build_counter(get_option($this->id_base));
         #return $content . $this->build_counter(get_option($this->id_base));
     }
-    
+
     //function activation_hook() {
     //    add_option($this->defaults());
     //}
-    
-        
+
+
     //function init() {
     //    // add to to the plugins menu, 'Wundercounter' Menu name, 'Wunder Counter' page title, administrator privleges only (10), in this file, this object and method
     //    add_submenu_page('plugins.php','WunderCounter', 'WunderCounter', 10, __FILE__, array(&$this,'admin_page'));
@@ -567,7 +567,7 @@ class WunderCounter extends WunderPluginWidget {
         //if( (float) get_bloginfo('version') >= 2.7)
         wp_add_dashboard_widget('wundercounter-dashboard', 'WunderCounter', array(&$this,'dashboard_widget'));
     }
-    
+
     // dashboard widget
     function dashboard_widget() {
         $options = $this->defaults(get_option($this->id_base));
@@ -578,10 +578,10 @@ class WunderCounter extends WunderPluginWidget {
             echo "<p>WunderCounter is up and running.</p>";
         }
     }
-    
+
     // create defaults
     function defaults($options = array()) {
-        
+
         // make sure we at least have something
         if     ( !isset($options)    ) { $options = array(); }
         elseif ( !is_array($options) ) { $options = (array) $options; }
@@ -604,19 +604,19 @@ class WunderCounter extends WunderPluginWidget {
                 $defaults['adv_'.$page_type.'_id'] = $page_type;
         }
 
-        // any are FALSE set to default (since 0 is invalid for any numerics we're safe)        
+        // any are FALSE set to default (since 0 is invalid for any numerics we're safe)
         foreach ($defaults as $key => $val ) {
             // if key not exists, value isn't set or it evaluates to false, set the default
             if( !( array_key_exists($key,$options) && isset($options[$key]) &&  $options[$key]) )
                 $options[$key] = $val;
         }
-        
+
         return $options;
     }
-    
-    
+
+
     function admin_page() {
-        
+
         $error = 0;
 
         /**
@@ -624,7 +624,7 @@ class WunderCounter extends WunderPluginWidget {
          * of the control panel.
          */
         $msgs = array(); // array( msg => '', type => 'updated|error' )
-        
+
 
         // get base options
         $options = $this->defaults(get_option($this->id_base));
@@ -639,15 +639,15 @@ class WunderCounter extends WunderPluginWidget {
              * was a good idea.
              */
             $_POST = array_map( 'stripslashes_deep', $_POST );
-            
+
             $params = $this->defaults(array_map('trim',(array) $_POST['wundercounter']));
-            
+
             // validate
             if( !( isset($params['username']) || strlen($params['username']) ) ) {
                 array_push($msgs,array('msg' => 'You must provide your WunderCounter username for this plugin to work.','type' =>'error'));
                 $error++;
             }
-            
+
             // the follow loop are for security. None of them should be a problem unless someone
             // gets stupid and messes directly with the form submission
             // keys: key => the posted form field
@@ -661,7 +661,7 @@ class WunderCounter extends WunderPluginWidget {
                 array( 'key' => 'complexity',   'label' => 'Complexity',                'haystack' => array('simple','advanced')),
                 array( 'key' => 'align',        'label' => 'Visible Counter Alignment', 'haystack' => array('left','right','center')),
             );
-            
+
             foreach ( $to_validate as $field ) {
                 $param = $params[$field['key']];
                 if( !in_array($param,$field['haystack']) ) {
@@ -670,13 +670,13 @@ class WunderCounter extends WunderPluginWidget {
                 }
             }
 
-            // ensure text_colour and background_colour cannot be the same value            
+            // ensure text_colour and background_colour cannot be the same value
             if($params['type'] != 'invisible' && $params['background'] == $params['text_colour']) {
                 array_push($msgs,array('msg' => 'The Text Color and Background Color may not be the same.','type'=>'error'));
                 $error++;
             }
-            
-            
+
+
             // now validate the stuff according to complexity settings
             if( $params['complexity'] == 'simple' ) {
                 if( !isset($params['simple_id'] ) || strlen($params['simple_id']) == 0 ) {
@@ -685,13 +685,13 @@ class WunderCounter extends WunderPluginWidget {
                 }
             }
             elseif ( $params['complexity'] == 'advanced' ) {
-                
+
                 foreach ( $this->advanced_counters as $page_type => $label) {
                     $type = $params['adv_'.$page_type];
                     $id   = $params['adv_'.$page_type.'_id'];
-                    
+
                     $options_list = $page_type == 'home' ? $this->home_types : $this->types;
-                    
+
                     if ( !( isset($type) && in_array($type,array_keys($options_list) ) )  ) {
                         array_push($msgs,array('msg' => 'Invalid '.$label.' Counter Type.','type' =>'error'));
                         $error++;
@@ -701,19 +701,19 @@ class WunderCounter extends WunderPluginWidget {
                         $error++;
                     }
                 }
-                
-            }
-            
 
-            # save changes on no error            
+            }
+
+
+            # save changes on no error
             if (!$error) {
                 update_option($this->id_base, $params);
                 array_push($msgs,array('msg' => 'WunderCounter options updated','type'=>'updated'));
             }
-            
+
             $options = $params;
         }
-        
+
         // add a notification that without the username the plugin will not function
         if(empty($options['username'])) {
             array_unshift($msgs,array('msg' => 'WunderCounter is inactive without a username.', 'type' => 'updated'));
@@ -722,7 +722,7 @@ class WunderCounter extends WunderPluginWidget {
         ?>
 <div class="wrap">
     <h2>WunderCounter Settings</h2>
-    
+
     <?php
         if( $error ) {
             if ( $error > 1 )
@@ -730,19 +730,19 @@ class WunderCounter extends WunderPluginWidget {
             else
                 echo "<div class='error'><p><strong>There was 1 error.</strong></p></div>";
         }
-        
+
         if ( count($msgs) > 0 ) {
             foreach ($msgs as $msg ) {
                 echo "<div class='".$msg['type']."'><p>".wp_filter_kses($msg['msg'])."</p></div>";
             }
         }
-        
-    ?>    
+
+    ?>
     <form method="post" action="<?php echo str_replace( '%7E', '~', $_SERVER['REQUEST_URI']); ?>">
         <input type="hidden" name="form_submitted" value="1" />
 
         <?php wp_nonce_field('wundercounter-settings'); ?>
-    
+
         <table class="form-table" style='width: auto;'>
 
             <tr valign="top">
@@ -751,7 +751,7 @@ class WunderCounter extends WunderPluginWidget {
                     <input type='text' name='wundercounter[username]' id='username' value='<?php echo wp_specialchars($options['username']); ?>' />
                 </td>
             </tr>
-                    
+
             <tr valign="top">
                 <th scope="row" rowspan='3'>Type of Counter:</th>
                 <td><input type='radio' name='wundercounter[type]' id='type1' value='invisible' <?php if($options['type'] == 'invisible') { echo 'checked="checked"'; } ?> /></td>
@@ -798,7 +798,7 @@ class WunderCounter extends WunderPluginWidget {
                     </select>
                 </td>
             </tr>
-    
+
             <tr valign="top" id="wundercounter-visual-background"<?php if($options['type'] == 'invisible' || $options['style'] != 'default'): ?>style='display:none'<?php endif; ?>>
                 <th scope="row">Background Color</th>
                 <td colspan='2'>
@@ -807,21 +807,21 @@ class WunderCounter extends WunderPluginWidget {
                     </select>
                 </td>
             </tr>
-            
+
             <tr valign='top'>
                 <th rowspan='2' scope='row'>Settings Level:</th>
                 <td><input type='radio' id='wundercounter-complexity-simple' name='wundercounter[complexity]' value='simple' <?php if($options['complexity'] == 'simple') { echo 'checked="checked"'; } ?> /></td>
                 <td>Simple</td>
             </tr>
-    
+
             <tr valign='top'>
                 <td><input type='radio' id='wundercounter-complexity-advanced' name='wundercounter[complexity]' value='advanced' <?php if($options['complexity'] == 'advanced') { echo 'checked="checked"'; } ?> /></td>
                 <td>Advanced</td>
             </tr>
-    
+
         </table>
 
-        <div id='wundercounter-simple' <?php if($options['complexity'] != 'simple') : ?>style='display:none;'<?php endif; ?>>    
+        <div id='wundercounter-simple' <?php if($options['complexity'] != 'simple') : ?>style='display:none;'<?php endif; ?>>
             <table class="form-table" style='width: auto;'>
                 <tr valign='top'>
                     <th scope='row'>Counter Name</th>
@@ -865,28 +865,28 @@ class WunderCounter extends WunderPluginWidget {
                 <?php endforeach; ?>
             </table>
         </div>
-        
-    
+
+
         <input type="hidden" name="action" value="update" />
         <!-- <input type="hidden" name="page_options" value="new_option_name,some_other_option,option_etc" /> -->
-    
+
         <p class="submit">
             <input type="submit" class="button-primary" value="<?php _e('Save Changes') ?>" />
         </p>
-    
+
     </form>
 </div>
-        
+
         <?php
     }
-    
+
     function _make_link($args) {
         $html = '';
-        
+
         // log the referrer
         if(!empty($_SERVER["HTTP_REFERER"]))
             $args['reF'] = $_SERVER["HTTP_REFERER"];
-                    
+
         $link = 'http://www.wundercounter.com/cgi-bin/stats/image.cgi';
         if(count($args)) {
             $query_elements = array();
@@ -894,7 +894,7 @@ class WunderCounter extends WunderPluginWidget {
                 array_push($query_elements, sprintf("%s=%s",$key,urlencode($val)));
             $link .= '?' . implode('&', $query_elements );
         }
-        
+
         $html .= sprintf(
             "<img src='%s' border='0' %s />",
             $link,
@@ -903,15 +903,15 @@ class WunderCounter extends WunderPluginWidget {
         return $html;
 
     }
-    
+
     function build_counter($options) {
-        
+
         $options = $this->defaults($options);
 
         // useless without a username
         if ( empty($options['username']) )
             return '';
-        
+
         $html = '';
 
         // these are the args we're going to pass to the <img> link
@@ -926,7 +926,7 @@ class WunderCounter extends WunderPluginWidget {
         else {
             $html .= sprintf("<div style='text-align: %s;'>",wp_specialchars($options['align']))
                    . sprintf("<a href='http://www.wundercounter.com/index.cgi?refID=%s' alt='WunderCounter' title='WunderCounter'>",urlencode($options['username']));
-                   
+
             $args['digits'] = 5;
             if($options['style'] == 'default' ) {
                 $args['bgcolour']   = $options['background'];
@@ -939,20 +939,20 @@ class WunderCounter extends WunderPluginWidget {
 
         // return the html for the simple setup
         if($options['complexity'] == 'simple') {
-            
+
             $args['page'] = $options['simple_id'];
             $html .= $this->_make_link($args);
-            
-            if ($options['type'] != 'invisible') 
+
+            if ($options['type'] != 'invisible')
                 $html .= "</a></div>";
             return $html;
         }
 
         /* Advanced */
         $base_id = $options['adv_base_id'];
-        
+
         $what_page = '';
-        
+
         if( is_front_page() )
             $what_page = 'home';
         elseif( is_page() )
@@ -965,7 +965,7 @@ class WunderCounter extends WunderPluginWidget {
             $what_page = 'post';
         else
             $what_page = 'default';
-        
+
         $type = $options['adv_'.$what_page];
         if($type == 'none')
             return '';
@@ -985,31 +985,31 @@ class WunderCounter extends WunderPluginWidget {
         }
 
         $html .= $this->_make_link($args);
-        
-        if ($options['type'] != 'invisible') 
+
+        if ($options['type'] != 'invisible')
             $html .= "</a></div>";
         return $html;
 
     }
-    
+
     // build the url for full url tracking
     // currently not used
     function url_string() {
-        
+
         $url = $_SERVER['HTTPS'] ? 'https://' : 'http://';
-        
+
         $url .= $_SERVER['HTTP_HOST'];
         if ( !empty($_SERVER['SERVER_PORT']) && !in_array($_SERVER['SERVER_PORT'],array(80,443)) )
             $url .= ':' . $_SERVER['SERVER_PORT'];
-        
+
         $url .= $_SERVER['REQUEST_URI'];
-        
+
         if (!empty($_SERVER['QUERY_STRING']))
             $url .= '?' . $_SERVER['QUERY_STRING'];
         return $url;
     }
-    
-    
+
+
     /***************************
      * Widget based code
      */
@@ -1018,11 +1018,11 @@ class WunderCounter extends WunderPluginWidget {
     function widget($args,$instance)
     {
         extract($args,EXTR_SKIP);
-        
+
         # get the config options
         $options = $this->defaults(get_option($this->id_base));
         $html    = $this->build_counter(&$options);
-        
+
         if (!empty($html)) {
             echo $before_widget;
             if(!empty($instance['title']))
@@ -1067,17 +1067,17 @@ class WunderCounter extends WunderPluginWidget {
     </p>
 <?php
     }
-    
+
 }
 
 $WunderCounter = new WunderCounter();
 
 function add_wundercounter() {
     global $WunderCounter;
-    
+
     echo $WunderCounter->build_counter(get_option($WunderCounter->id_base));
-    
+
 }
 
- 
+
 ?>
