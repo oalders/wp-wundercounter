@@ -940,7 +940,13 @@ class WunderCounter extends WunderPluginWidget {
         // return the html for the simple setup
         if($options['complexity'] == 'simple') {
 
-            $args['page'] = $options['simple_id'];
+            $args['page']
+                = $options['simple_id'] == 'dynamic'
+                ? $_SERVER[REQUEST_URI] == '/'
+                    ? $_SERVER[HTTP_HOST]
+                    : $_SERVER[REQUEST_URI]
+                : $options['simple_id'];
+
             $html .= $this->_make_link($args);
 
             if ($options['type'] != 'invisible')
