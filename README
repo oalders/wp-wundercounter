@@ -1,2 +1,5 @@
 Incorporate the WunderCounter into a Wordpress blog.
 
+Create a zip archive:
+
+zip -r wp-wundercounter.zip wp-wundercounter -x *.git*
