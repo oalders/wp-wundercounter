@@ -4,7 +4,7 @@
 Plugin Name: WunderCounter
 Plugin URI: http://www.wundercounter.com/
 Description: Incorporate the WunderCounter into your wordpress blog.
-Version: 1.0
+Version: 1.1
 Author: WunderSolutions
 Author URI: http://www.wundersolutions.com/
 */
